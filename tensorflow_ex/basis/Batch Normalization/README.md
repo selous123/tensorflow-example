@@ -1,5 +1,19 @@
 撰写时间：2017.08.31
+
 撰写内容：使用tensorflow实现batch normalization
+
+
+**写在开头:batch normalization不是很难的内容，但是如果不自己通过一些低级的API实现总会觉得有些细节很难触碰到，所以下面的内容就是如何使用tensorflow实现batch normalization。**
+
+文章分为两部分：
+
+1.实现过程中使用的API，**务必在实现之前了解这些api的使用**
+
+2.实现batch normalization，**代码来自于stackoverflow上面的一个回答。**
+
+代码是否可用，并没有测试。我也是今天早上做项目的时候需要使用bn，所以花了一天时间，边学习，边记录才有了这篇博文。对于文中API解释不清楚的，可以搜一搜tensorflow的官方问答，或者其他博文。最后所有的测试代码，可以从我的github地址上下载（还没上传。。）
+
+
 
 # tensorflow API
 
@@ -46,10 +60,9 @@ with tf.Session() as session:
 ```
 
 with "y=x",并不会创建变量，而且不是op，所以tf.control_dependencies并不会生效。
-![](/home/lrh/Pictures/Selection_024.jpg) 
-
+![这里写图片描述](img/Selection_024.jpg)
 with "y=tf.identity(x)"，每次取y的值，x都会自动加1
-![](/home/lrh/Pictures/Selection_025.jpg) 
+![这里写图片描述](img/Selection_025.jpg)
 ## ExponentialMovingAverage
 ### 1.apply()
 
@@ -187,10 +200,11 @@ with tf.control_dependencies([a, b]):
     c = tf.no_op() #定义一个空操作
 ```
 上面代码的计算图，可以看出所有的op之间的依赖关系
-![](/home/lrh/Pictures/Selection_026.jpg) 
+![这里写图片描述](img/Selection_026.jpg)
 
 
 # batch normalization
+**当你看到了这里，我希望你上面所有的api都弄懂了，诚然这篇博文写的不怎么样，不详细，可能很多我自己理解的东西无法用语言表达出来，所以就需要你自己根据文章脉络去搜其他详细的博文来学习。所以如果你对上面的那些api都特别熟悉，那么下面的这段代码对你来说要是很简单的就能看懂。**
 ```python
 """A helper class for managing batch normalization state.                   
 
@@ -263,12 +277,33 @@ class ConvolutionalBatchNormalizer(object):
 
 batch normalization的代码，对于训练过程是很简单的，也就是首先通过调用tensorflow的api，tf.batch_norm(x)函数将x变换到y。然后通过简单的链式法则求梯度，然后选择一种梯度更新的方法进行参数更新$(\gamma,\beta)$.
 
-但是对于test过程，我们需要利用在训练过程中的变量mean和variance，假设有train_step=10000，那么我们就有了10000个mean和variance.论文中提到的是使用ExponentialMovingAverage，滑动平均，也就是在train的过程中**每一次gradient更新之后都要根据新的mean和variance的值计算shadow variable。**然后在test的过程中利用最后的mean和variance做计算！！！
+但是对于test过程，我们需要利用在训练过程中的变量mean和variance，假设有train_step=10000，那么我们就有了10000个mean和variance.论文中提到的是使用ExponentialMovingAverage，滑动平均，也就是在train的过程中**每一次gradient更新之后都要根据新的mean和variance的值计算shadow variable。（ExponentialMovingAverage更新，这个更新是为了测试过程中能够使用训练集的mean和variance，而和传统的参数更新，如：$\gamma \beta$，并没有什么联系）**然后在test的过程中利用最后的mean和variance做计算！！！
 
 
 
 
 
+如何使用这个函数，在注释中作者已经详细给出了
+
+```python
+#先在层中使用这个类
+ewma = tf.train.ExponentialMovingAverage(decay=0.99)                  
+bn = ConvolutionalBatchNormalizer(depth, 0.001, ewma, True)           
+update_assignments = bn.get_assigner()                                
+x = bn.normalize(y, train=training?)
+#x 就是normalization后的量
+
+...
+
+#定义mean和variance的更新(ExponentialMovingAverage)
+#
+update_assignments = tf.group(bn1.get_assigner(),                         
+                                bn2.get_assigner())                         
+with tf.control_dependencies([optimizer]):                                
+	optimizer = tf.group(update_assignments)
+```
+
+[How could i use batch normalization in tensorflow?---stackoverflow 地址](https://stackoverflow.com/questions/33949786/how-could-i-use-batch-normalization-in-tensorflow)
 
 
 
