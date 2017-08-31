@@ -34,7 +34,7 @@ def batch_norm_layer(input,name=None):
     gamma = tf.get_variable(name="gamma",shape=[1],initializer=tf.constant_initializer(0.0)) 
     beta = tf.get_variable(name="beta",shape=[1],initializer=tf.constant_initializer(0.0))
     variance_const = tf.get_variable(name="const",shape=[1],initializer=tf.constant_initializer(0.1),trainable=False)
-    return tf.nn.batch_normalization(input,mean,var,beta,gamma,variance_const,name="batch_normal")
+    return tf.nn.batch_norm_with_global_normalization(input,mean,var,beta,gamma,variance_const,name="batch_normal")
     
 
 
